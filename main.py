@@ -18,11 +18,13 @@ from torchaudio_augmentations import (
     PitchShift,
     Reverb,
 )
+from torchaudio import transforms
 
 from clmr.data import ContrastiveDataset
 from clmr.datasets import get_dataset
 from clmr.evaluation import evaluate
 from clmr.models import SampleCNN
+from clmr.models.conformer import Conformer
 from clmr.modules import ContrastiveLearning, SupervisedLearning
 from clmr.utils import yaml_config_hook
 
@@ -42,8 +44,11 @@ if __name__ == "__main__":
     # ------------
     # data augmentations
     # ------------
+    test_transform = [transforms.MelSpectrogram(sample_rate=args.sample_rate, n_mels=64),
+            transforms.AmplitudeToDB()]
     if args.supervised:
-        train_transform = [RandomResizedCrop(n_samples=args.audio_length)]
+        train_transform = [RandomResizedCrop(n_samples=args.audio_length), transforms.MelSpectrogram(sample_rate=args.sample_rate, n_mels=64),
+            transforms.AmplitudeToDB()]
         num_augmented_samples = 1
     else:
         train_transform = [
@@ -67,6 +72,8 @@ if __name__ == "__main__":
             RandomApply(
                 [Reverb(sample_rate=args.sample_rate)], p=args.transforms_reverb
             ),
+            transforms.MelSpectrogram(sample_rate=args.sample_rate, n_mels=64),
+            transforms.AmplitudeToDB(),
         ]
         num_augmented_samples = 2
 
@@ -110,10 +117,18 @@ if __name__ == "__main__":
     # ------------
     # encoder
     # ------------
-    encoder = SampleCNN(
-        strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
-        supervised=args.supervised,
-        out_dim=train_dataset.n_classes,
+    # encoder = SampleCNN(
+    #     strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
+    #     supervised=args.supervised,
+    #     out_dim=train_dataset.n_classes,
+    # )
+    encoder = Conformer(
+        num_classes=train_dataset.n_classes,
+        input_dim=64,
+        encoder_dim=128,
+        num_encoder_layers=8,
+        num_attention_heads=4,
+        conv_kernel_size=31
     )
 
     # ------------
@@ -130,26 +145,25 @@ if __name__ == "__main__":
             args.checkpoint_path, encoder=encoder, output_dim=train_dataset.n_classes
         )
 
+    # ------------
+    # training
+    # ------------
+
+    if args.supervised:
+        early_stopping = EarlyStopping(monitor="Valid/loss", patience=20)
     else:
-        # ------------
-        # training
-        # ------------
+        early_stopping = None
 
-        if args.supervised:
-            early_stopping = EarlyStopping(monitor="Valid/loss", patience=20)
-        else:
-            early_stopping = None
-
-        trainer = Trainer.from_argparse_args(
-            args,
-            logger=logger,
-            sync_batchnorm=True,
-            max_epochs=args.max_epochs,
-            log_every_n_steps=10,
-            check_val_every_n_epoch=1,
-            accelerator=args.accelerator,
-        )
-        trainer.fit(module, train_loader, valid_loader)
+    trainer = Trainer.from_argparse_args(
+        args,
+        logger=logger,
+        sync_batchnorm=True,
+        max_epochs=args.max_epochs,
+        log_every_n_steps=10,
+        check_val_every_n_epoch=1,
+        accelerator=args.accelerator,
+    )
+    trainer.fit(module, train_loader, valid_loader)
 
     if args.supervised:
         test_dataset = get_dataset(args.dataset, args.dataset_dir, subset="test")
@@ -157,7 +171,7 @@ if __name__ == "__main__":
         contrastive_test_dataset = ContrastiveDataset(
             test_dataset,
             input_shape=(1, args.audio_length),
-            transform=None,
+            transform=test_transform,
         )
 
         device = "cuda:0" if args.gpus else "cpu"

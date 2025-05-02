@@ -23,9 +23,9 @@ class ContrastiveDataset(Dataset):
         if audio.shape[1] < self.input_shape[1]:
             self.ignore_idx.append(idx)
             return self[idx + 1]
-
         if self.transform:
-            audio = self.transform(audio)
+            audio = self.transform(audio).squeeze(0)
+            audio = audio.squeeze(1).transpose(-2, -1)
         return audio, label
 
     def __len__(self) -> int:

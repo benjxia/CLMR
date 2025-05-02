@@ -3,6 +3,7 @@ import argparse
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchaudio_augmentations import Compose, RandomResizedCrop
+from torchaudio import transforms
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -11,6 +12,7 @@ from clmr.datasets import get_dataset
 from clmr.data import ContrastiveDataset
 from clmr.evaluation import evaluate
 from clmr.models import SampleCNN
+from clmr.models.conformer.model import Conformer
 from clmr.modules import ContrastiveLearning, LinearEvaluation
 from clmr.utils import (
     yaml_config_hook,
@@ -35,7 +37,8 @@ if __name__ == "__main__":
     if not os.path.exists(args.checkpoint_path):
         raise FileNotFoundError("That checkpoint does not exist")
 
-    train_transform = [RandomResizedCrop(n_samples=args.audio_length)]
+    train_transform = [RandomResizedCrop(n_samples=args.audio_length), transforms.MelSpectrogram(sample_rate=args.sample_rate, n_mels=64),
+            transforms.AmplitudeToDB()]
 
     # ------------
     # dataloaders
@@ -86,13 +89,16 @@ if __name__ == "__main__":
     # ------------
     # encoder
     # ------------
-    encoder = SampleCNN(
-        strides=[3, 3, 3, 3, 3, 3, 3, 3, 3],
-        supervised=args.supervised,
-        out_dim=train_dataset.n_classes,
+    encoder = Conformer(
+        num_classes=train_dataset.n_classes,
+        input_dim=64,
+        encoder_dim=128,
+        num_encoder_layers=8,
+        num_attention_heads=4,
+        conv_kernel_size=31
     )
 
-    n_features = encoder.fc.in_features  # get dimensions of last fully-connected layer
+    n_features = encoder.fc.linear.in_features  # get dimensions of last fully-connected layer
 
     state_dict = load_encoder_checkpoint(args.checkpoint_path, train_dataset.n_classes)
     encoder.load_state_dict(state_dict)
@@ -108,26 +114,25 @@ if __name__ == "__main__":
         output_dim=train_dataset.n_classes,
     )
 
-    train_representations_dataset = module.extract_representations(train_loader)
-    train_loader = DataLoader(
-        train_representations_dataset,
-        batch_size=args.batch_size,
-        num_workers=args.workers,
-        shuffle=True,
-    )
-
-    valid_representations_dataset = module.extract_representations(valid_loader)
-    valid_loader = DataLoader(
-        valid_representations_dataset,
-        batch_size=args.batch_size,
-        num_workers=args.workers,
-        shuffle=False,
-    )
-
     if args.finetuner_checkpoint_path:
         state_dict = load_finetuner_checkpoint(args.finetuner_checkpoint_path)
         module.model.load_state_dict(state_dict)
     else:
+        train_representations_dataset = module.extract_representations(train_loader)
+        train_loader = DataLoader(
+            train_representations_dataset,
+            batch_size=args.batch_size,
+            num_workers=args.workers,
+            shuffle=True,
+        )
+
+        valid_representations_dataset = module.extract_representations(valid_loader)
+        valid_loader = DataLoader(
+            valid_representations_dataset,
+            batch_size=args.batch_size,
+            num_workers=args.workers,
+            shuffle=False,
+        )
         early_stop_callback = EarlyStopping(
             monitor="Valid/loss", patience=10, verbose=False, mode="min"
         )
@@ -150,5 +155,6 @@ if __name__ == "__main__":
         args.dataset,
         args.audio_length,
         device=device,
+        transforms=Compose(train_transform)
     )
     print(results)

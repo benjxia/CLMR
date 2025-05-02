@@ -18,8 +18,8 @@ def load_encoder_checkpoint(checkpoint_path: str, output_dim: int) -> OrderedDic
             if "encoder." in k:
                 new_state_dict[k.replace("encoder.", "")] = v
 
-    new_state_dict["fc.weight"] = torch.zeros(output_dim, 512)
-    new_state_dict["fc.bias"] = torch.zeros(output_dim)
+    new_state_dict["fc.linear.weight"] = torch.zeros(output_dim, 128)
+    # new_state_dict["fc.linear.bias"] = torch.zeros(output_dim)
     return new_state_dict
 
 

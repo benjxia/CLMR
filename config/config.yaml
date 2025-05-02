@@ -6,7 +6,7 @@ dataset_dir: "./data"
 
 # train options
 seed: 42
-batch_size: 48
+batch_size: 42
 # max_epochs: 200
 dataset: "magnatagatune" # ["magnatagatune", "msd", "gtzan", "audio"]
 supervised: 0 # train with supervised baseline
@@ -21,7 +21,7 @@ weight_decay: 1.0e-6 # "optimized using LARS [...] and weight decay of 10−6"
 temperature: 0.5 # see appendix B.7.: Optimal temperature under different batch sizes
 
 # reload options
-checkpoint_path: "" # set to the directory containing `checkpoint_##.tar`
+checkpoint_path: "/home/benjx/CLMR/runs/CLMRv2-magnatagatune/version_22/checkpoints/epoch=24-step=11125.ckpt" # set to the directory containing `checkpoint_##.tar`
 
 # logistic regression options
 finetuner_mlp: 0
@@ -31,8 +31,8 @@ finetuner_batch_size: 256
 finetuner_learning_rate: 0.001
 
 # audio data augmentation options
-audio_length: 59049
-sample_rate: 22050
+audio_length: 160000
+sample_rate: 16000
 transforms_polarity: 0.8
 transforms_noise: 0.01
 transforms_gain: 0.3

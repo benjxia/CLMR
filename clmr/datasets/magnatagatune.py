@@ -23,10 +23,10 @@ from clmr.datasets import Dataset
 
 FOLDER_IN_ARCHIVE = "magnatagatune"
 _CHECKSUMS = {
-    "http://mi.soi.city.ac.uk/datasets/magnatagatune/mp3.zip.001": "",
-    "http://mi.soi.city.ac.uk/datasets/magnatagatune/mp3.zip.002": "",
-    "http://mi.soi.city.ac.uk/datasets/magnatagatune/mp3.zip.003": "",
-    "http://mi.soi.city.ac.uk/datasets/magnatagatune/annotations_final.csv": "",
+    "https://mirg.city.ac.uk/datasets/magnatagatune/mp3.zip.001": "",
+    "https://mirg.city.ac.uk/datasets/magnatagatune/mp3.zip.002": "",
+    "https://mirg.city.ac.uk/datasets/magnatagatune/mp3.zip.003": "",
+    "https://mirg.city.ac.uk/datasets/magnatagatune/annotations_final.csv": "",
     "https://github.com/minzwon/sota-music-tagging-models/raw/master/split/mtat/binary.npy": "",
     "https://github.com/minzwon/sota-music-tagging-models/raw/master/split/mtat/tags.npy": "",
     "https://github.com/minzwon/sota-music-tagging-models/raw/master/split/mtat/test.npy": "",

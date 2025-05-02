@@ -13,6 +13,7 @@ def evaluate(
     dataset_name: str,
     audio_length: int,
     device,
+    transforms
 ) -> dict:
     est_array = []
     gt_array = []
@@ -28,8 +29,9 @@ def evaluate(
         for idx in tqdm(range(len(test_dataset))):
             _, label = test_dataset[idx]
             batch = test_dataset.concat_clip(idx, audio_length)
+            batch = transforms(batch)
+            batch = batch.squeeze(1).squeeze(1).transpose(-2, -1)
             batch = batch.to(device)
-
             output = encoder(batch)
             if finetuned_head:
                 output = finetuned_head(output)

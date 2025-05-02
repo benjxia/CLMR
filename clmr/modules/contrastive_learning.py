@@ -3,6 +3,7 @@ import torch.nn as nn
 from pytorch_lightning import LightningModule
 from torch import Tensor
 
+from ..models.conformer import Conformer
 from simclr import SimCLR
 from simclr.modules import NT_Xent, LARS
 
@@ -13,9 +14,8 @@ class ContrastiveLearning(LightningModule):
         self.save_hyperparameters(args)
 
         self.encoder = encoder
-        self.n_features = (
-            self.encoder.fc.in_features
-        )  # get dimensions of last fully-connected layer
+        self.n_features = 128
+        # )  # get dimensions of last fully-connected layer
         self.model = SimCLR(self.encoder, self.hparams.projection_dim, self.n_features)
         self.criterion = self.configure_criterion()
 
